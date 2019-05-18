@@ -37,7 +37,18 @@ parser.add_argument('checkpoint_filepath',
                     action = 'store',
                     default = 'flowers/test/101/image_07949.jpg',
                     help = 'Used for image path')
+
+parser.add_argument('--gpu', 
+                    action = "store_true", 
+                    dest = 'deviceIsGPU', 
+                    default = False, 
+                    help ='True if you want use GPU for training')
+
 input_args = parser.parse_args()
+# Choose device, by default cpu and if user specifies gpu
+device = "cpu"
+if input_args.deviceIsGPU:
+    device = "cuda"
 
 print("Let's predict the class of the image {}".format(input_args.image_path))
 
@@ -52,6 +63,6 @@ mn.process_image(input_args.image_path)
 print('Step 2: Done')
 
 print('Step 3: Predict the class of image {} ...'.format(input_args.image_path))
-prediction = mn.predict(input_args.image_path, new_model, input_args.category_names, input_args.top_k)
+prediction = mn.predict(input_args.image_path, new_model, input_args.category_names, device, input_args.top_k)
 print(prediction)
 print('Step 2: Done.')

@@ -16,16 +16,18 @@ normalize_param_std = [0.229, 0.224, 0.225]
 batch_size = 64
 
 input_size = 25088 
-hidden_size = 1024
+#hidden_size = 1024
 output_size = 102
 dropout_ps = 0.2
 epochs_nb = 3
 learning_rate = 0.001
 
-checkpoint_name = 'checkpoint2.pth'
+checkpoint_name = 'checkpoint'
 
 class Classifier(nn.Module):
-    def __init__(self):
+    def __init__(self, hidden_units):
+        global hidden_size
+        hidden_size = hidden_units
         super().__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, output_size)
@@ -73,17 +75,16 @@ def transform_data(data_dirs, data_sets):
         ])
     }
 
+    image_datasets = {data_set : datasets.ImageFolder(data_dirs[data_set], transform = data_transforms[data_set]) for data_set in data_sets } 
 
-    image_datasets = {data_set : datasets.ImageFolder(data_dirs[data_set], transform =            data_transforms[data_set]) for data_set in data_sets } 
-
-    data_loaders = {data_set : torch.utils.data.DataLoader(image_datasets[data_set], batch_size =   batch_size, shuffle = True) for data_set in data_sets }
+    data_loaders = {data_set : torch.utils.data.DataLoader(image_datasets[data_set], batch_size = batch_size, shuffle = True) for data_set in data_sets }
 
     dataset_sizes = {data_set: len(image_datasets[data_set] )
                    for data_set in data_sets
     }
     return data_loaders, dataset_sizes, image_datasets
 
-def set_architecture(architecture, learning_rate):
+def set_architecture(architecture, hidden_units, learning_rate):
     if architecture == 'vgg19':
         model = models.vgg19(pretrained = True)
         global arch
@@ -91,6 +92,10 @@ def set_architecture(architecture, learning_rate):
     elif architecture == 'vgg13':
         model = models.vgg13(pretrained = True)  
         arch = 'vgg13'
+    elif architecture == 'vgg16':
+        model = models.vgg16(pretrained = True)  
+        arch = 'vgg16'
+
     else:
         print('The input models architecture is not recognized')
         
@@ -99,14 +104,14 @@ def set_architecture(architecture, learning_rate):
         param.requires_grad = False
 
     # Add rhe new classifier
-    model.classifier = Classifier()
+    model.classifier = Classifier(hidden_units)
 
     # Prepare training of the classifier layer
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.classifier.parameters(), lr = learning_rate)
     return model, criterion, optimizer
 
-def train_model(data_loaders, model, criterion, optimizer, epochs_nb = 10, device = 'cuda'):
+def train_model(data_loaders, model, criterion, optimizer, device, epochs_nb = 10):
     model.to(device);
     with wu.active_session():
         steps = 0
@@ -151,7 +156,7 @@ def train_model(data_loaders, model, criterion, optimizer, epochs_nb = 10, devic
                     model.train()
     return model
 
-def check_accuracy(model, data_loader, device = 'cuda'):  
+def check_accuracy(model, data_loader, device):  
     model.eval()
     model.to(device)
     accuracy = 0
@@ -169,14 +174,16 @@ def check_accuracy(model, data_loader, device = 'cuda'):
         print(f"Accuracy of the network on the {len(data_loader):.3f}"
           " images: %d %%" % (100 * accuracy/len(data_loader)))
                     
-def save_model(image_datasets, model, save_directory):
+def save_model(image_datasets, model, device, save_directory):
     model.class_to_idx = image_datasets['train'].class_to_idx
-    model.cpu()
     checkpoint = {'model_arch': arch,
+                  'model_device': device,
+                  'hidden_units': hidden_size,
                   'class_to_idx' : model.class_to_idx,
                   'state_dict': model.state_dict()}
-    torch.save(checkpoint, '{}{}'.format(save_directory, checkpoint_name))
-    print('Model is saved to : ', '{}{}'.format(save_directory, checkpoint_name))
+    save_name = '{}{}_{}.pth'.format(save_directory, checkpoint_name, arch)
+    torch.save(checkpoint, save_name)
+    print('Model is saved to : ', save_name)
        
 def load_model_from_checkpoint(checkpoint_filepath):
     checkpoint = torch.load(checkpoint_filepath)
@@ -185,15 +192,18 @@ def load_model_from_checkpoint(checkpoint_filepath):
         arch = 'vgg19' 
     elif checkpoint['model_arch'] == 'vgg13':
         model = models.vgg13(pretrained = True)  
-        arch = 'vgg13'   
+        arch = 'vgg13' 
+    elif checkpoint['model_arch'] == 'vgg16':
+        model = models.vgg16(pretrained = True)  
+        arch = 'vgg16'
     else:
         print('The models architecture is not recognized')
     for param in model.parameters():
             param.requires_grad = False   
     model.class_to_idx = checkpoint['class_to_idx']
-    model.classifier = Classifier()
-    model.load_state_dict(checkpoint['state_dict'])
-    
+    model.classifier = Classifier(checkpoint['hidden_units'])
+    model.load_state_dict(checkpoint['state_dict']) 
+    #model.to(checkpoint['model_device'])
     return model
 
 def process_image(image_path):
@@ -229,21 +239,24 @@ def process_image(image_path):
     tronsposed_image = np_image.transpose((2, 0, 1))
     return tronsposed_image
 
-def predict(image_path, model, category_names, topk = 5):
+def predict(image_path, model, category_names, device, topk = 5):
     ''' Predict the class (or classes) of an image using a trained deep learning model. '''
     # process image
-    model.cpu()
+    model.to(device)
     image = process_image(image_path)
     
     # convert to tensor
-    image_tensor = torch.from_numpy(image).type(torch.FloatTensor)
+    image_tensor = torch.from_numpy(image)# 
+    image_tensor = image_tensor.type(torch.FloatTensor)
     image_tensor.resize_([1, 3, crop_size, crop_size])
 
     #do prediction
-    prediction = torch.exp(model(image_tensor))
+    model_output = model(image_tensor.to(device))
+    prediction = torch.exp(model_output)
     probabilities, predicted_labels = prediction.topk(topk)
-    probabilities = probabilities.detach().numpy().tolist()[0]
-    predicted_labels = predicted_labels.detach().numpy().tolist()[0]
+    probabilities, predicted_labels =  probabilities.to(device), predicted_labels.to(device)
+    probabilities = probabilities.cpu().detach().numpy().tolist()[0]
+    predicted_labels = predicted_labels.cpu().detach().numpy().tolist()[0]
 
     # get classes
     with open(category_names, 'r') as f:

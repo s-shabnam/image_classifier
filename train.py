@@ -23,7 +23,7 @@ parser.add_argument('--gpu',
                     action = "store_true", 
                     dest = 'deviceIsGPU', 
                     default = False, 
-                    help ='True if you want use CPU for training')
+                    help ='True if you want use GPU for training')
 
 parser.add_argument('--learning_rate', 
                     action = "store", 
@@ -67,6 +67,12 @@ parser.add_argument('--version', action = 'version',
                     version = '%(prog)s 1.0')
 
 input_args = parser.parse_args()
+
+# Choose device, by default cpu and if user specifies gpu
+device = "cpu"
+if input_args.deviceIsGPU:
+    device = "cuda"
+    
 print(input_args)
 
 print('Step 0: Begin processing...')
@@ -81,15 +87,11 @@ data_loaders, dataset_sizes, image_datasets = mn.transform_data(data_directories
 print('Step 2: Done')
 
 print('Step 3: Define model architecture...')
-model, criterion, optimizer = mn.set_architecture(input_args.architecture, input_args.learning_rate)
-print('Step 3: Done')
-
-device = 'cuda'
-if input_args.deviceIsGPU:
-    device = 'gpu' 
+model, criterion, optimizer = mn.set_architecture(input_args.architecture, input_args.hidden_units, input_args.learning_rate)
+print('Step 3: Done') 
 
 print('Step 4: Train the selected model {} with input parameters: epochs = {} and device = {} ...'.format(input_args.architecture, input_args.epochs, device))
-trained_model = mn.train_model(data_loaders, model, criterion, optimizer, input_args.epochs, device)
+trained_model = mn.train_model(data_loaders, model, criterion, optimizer, device, input_args.epochs)
 print('Step 4: Done')
 
 print('Step 5: Check prediction arruracy...')
@@ -97,7 +99,7 @@ mn.check_accuracy(trained_model, data_loaders['test'], device)
 print('Step 5: Done')
 
 print('Step 6: Save trained model...')
-mn.save_model(image_datasets, trained_model, input_args.save_dir)
+mn.save_model(image_datasets, trained_model, device, input_args.save_dir)
 print('Step 6: Done')
 
 

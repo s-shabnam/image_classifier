@@ -13154,7 +13154,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Imports here</span>
@@ -13162,7 +13162,7 @@ div#notebook {
 <span class="o">%</span><span class="k">config</span> InlineBackend.figure_format = &#39;retina&#39;
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-
+<span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch</span> <span class="k">import</span> <span class="n">nn</span>
 <span class="kn">from</span> <span class="nn">torch</span> <span class="k">import</span> <span class="n">optim</span>
@@ -13170,72 +13170,7 @@ div#notebook {
 <span class="kn">from</span> <span class="nn">torchvision</span> <span class="k">import</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">transforms</span><span class="p">,</span> <span class="n">models</span>
 <span class="kn">from</span> <span class="nn">PIL</span> <span class="k">import</span> <span class="n">Image</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">signal</span>
-
-<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span>
-
-<span class="kn">import</span> <span class="nn">requests</span>
-
-
-<span class="n">DELAY</span> <span class="o">=</span> <span class="n">INTERVAL</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="mi">60</span>  <span class="c1"># interval time in seconds</span>
-<span class="n">MIN_DELAY</span> <span class="o">=</span> <span class="n">MIN_INTERVAL</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">60</span>
-<span class="n">KEEPALIVE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://nebula.udacity.com/api/v1/remote/keep-alive&quot;</span>
-<span class="n">TOKEN_URL</span> <span class="o">=</span> <span class="s2">&quot;http://metadata.google.internal/computeMetadata/v1/instance/attributes/keep_alive_token&quot;</span>
-<span class="n">TOKEN_HEADERS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Metadata-Flavor&quot;</span><span class="p">:</span><span class="s2">&quot;Google&quot;</span><span class="p">}</span>
-
-
-<span class="k">def</span> <span class="nf">_request_handler</span><span class="p">(</span><span class="n">headers</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">_handler</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
-        <span class="n">requests</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="n">KEEPALIVE_URL</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">_handler</span>
-
-
-<span class="nd">@contextmanager</span>
-<span class="k">def</span> <span class="nf">active_session</span><span class="p">(</span><span class="n">delay</span><span class="o">=</span><span class="n">DELAY</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="n">INTERVAL</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Example:</span>
-
-<span class="sd">    from workspace_utils import active_session</span>
-
-<span class="sd">    with active_session():</span>
-<span class="sd">        # do long-running work here</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">token</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">TOKEN_URL</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">TOKEN_HEADERS</span><span class="p">)</span><span class="o">.</span><span class="n">text</span>
-    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="s2">&quot;STAR &quot;</span> <span class="o">+</span> <span class="n">token</span><span class="p">}</span>
-    <span class="n">delay</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">delay</span><span class="p">,</span> <span class="n">MIN_DELAY</span><span class="p">)</span>
-    <span class="n">interval</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">interval</span><span class="p">,</span> <span class="n">MIN_INTERVAL</span><span class="p">)</span>
-    <span class="n">original_handler</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGALRM</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">_request_handler</span><span class="p">(</span><span class="n">headers</span><span class="p">))</span>
-        <span class="n">signal</span><span class="o">.</span><span class="n">setitimer</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">ITIMER_REAL</span><span class="p">,</span> <span class="n">delay</span><span class="p">,</span> <span class="n">interval</span><span class="p">)</span>
-        <span class="k">yield</span>
-    <span class="k">finally</span><span class="p">:</span>
-        <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">original_handler</span><span class="p">)</span>
-        <span class="n">signal</span><span class="o">.</span><span class="n">setitimer</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">ITIMER_REAL</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-
-
-<span class="k">def</span> <span class="nf">keep_awake</span><span class="p">(</span><span class="n">iterable</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="n">DELAY</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="n">INTERVAL</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Example:</span>
-
-<span class="sd">    from workspace_utils import keep_awake</span>
-
-<span class="sd">    for i in keep_awake(range(5)):</span>
-<span class="sd">        # do iteration with lots of work here</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">with</span> <span class="n">active_session</span><span class="p">(</span><span class="n">delay</span><span class="p">,</span> <span class="n">interval</span><span class="p">):</span> <span class="k">yield from</span> <span class="n">iterable</span>
+<span class="kn">from</span> <span class="nn">workspace_utils</span> <span class="k">import</span> <span class="n">active_session</span>
 </pre></div>
 
     </div>
@@ -13255,7 +13190,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">data_dir</span> <span class="o">=</span> <span class="s1">&#39;flowers&#39;</span>
@@ -13279,7 +13214,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Hyper-parameters</span>
@@ -13304,7 +13239,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># TODO: Define your transforms for the training, validation, and testing sets</span>
@@ -13355,12 +13290,10 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">json</span>
-
-<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;cat_to_name.json&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;cat_to_name.json&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
     <span class="n">cat_to_name</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
 </pre></div>
 
@@ -13389,7 +13322,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Load pretrained network</span>
@@ -13411,7 +13344,7 @@ div#notebook {
 
 <div class="output_subarea output_stream output_stderr output_text">
 <pre>Downloading: &#34;https://download.pytorch.org/models/vgg19-dcbb9e9d.pth&#34; to /root/.torch/models/vgg19-dcbb9e9d.pth
-100%|██████████| 574673361/574673361 [00:08&lt;00:00, 67743562.67it/s]
+100%|██████████| 574673361/574673361 [00:34&lt;00:00, 16834433.02it/s]
 </pre>
 </div>
 </div>
@@ -13422,7 +13355,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1">#Define a new, untrained feed-forward network as a classifier,</span>
